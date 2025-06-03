@@ -7,35 +7,50 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME
+// Crear la conexión usando DATABASE_URL
+const connection = mysql.createConnection(process.env.DATABASE_URL);
+
+connection.connect(err => {
+  if (err) {
+    console.error('Error conectando a la base de datos:', err);
+    return;
+  }
+  console.log('✅ Conectado a la base de datos de Railway');
 });
 
-db.connect(err => {
-  if (err) throw err;
-  console.log('Conectado a la base de datos');
-});
-
-app.get('/usuarios', (req, res) => {
-  db.query('SELECT * FROM usuarios', (err, resultados) => {
-    if (err) return res.status(500).json({ error: 'Error al consultar' });
-    res.json(resultados);
-  });
-});
-
+// Endpoint para agregar un usuario
 app.post('/usuarios', (req, res) => {
   const { nombre } = req.body;
-  if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
+  if (!nombre) {
+    return res.status(400).json({ error: 'Falta el nombre' });
+  }
 
-  db.query('INSERT INTO usuarios (nombre) VALUES (?)', [nombre], (err, resultado) => {
-    if (err) return res.status(500).json({ error: 'Error al insertar' });
-    res.json({ id: resultado.insertId, nombre });
+  connection.query(
+    'INSERT INTO usuarios (nombre) VALUES (?)',
+    [nombre],
+    (err, results) => {
+      if (err) {
+        console.error('❌ Error al insertar usuario:', err);
+        return res.status(500).json({ error: 'Error al insertar usuario' });
+      }
+      res.status(201).json({ id: results.insertId, nombre });
+    }
+  );
+});
+
+// Endpoint para listar usuarios
+app.get('/usuarios', (req, res) => {
+  connection.query('SELECT * FROM usuarios', (err, results) => {
+    if (err) {
+      console.error('❌ Error al obtener usuarios:', err);
+      return res.status(500).json({ error: 'Error al obtener usuarios' });
+    }
+    res.json(results);
   });
 });
 
-app.listen(3000, () => {
-  console.log('Servidor corriendo en http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
 });
