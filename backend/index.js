@@ -2,13 +2,22 @@ require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
+const { URL } = require('url');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Crear la conexión usando DATABASE_URL
-const connection = mysql.createConnection(process.env.DATABASE_URL);
+// Parsear la URL de conexión de MySQL desde la variable de entorno
+const dbUrl = new URL(process.env.MYSQL_PUBLIC_URL);
+
+const connection = mysql.createConnection({
+  host: dbUrl.hostname,
+  user: dbUrl.username,
+  password: dbUrl.password,
+  database: dbUrl.pathname.slice(1), // eliminar la barra inicial '/'
+  port: dbUrl.port,
+});
 
 connection.connect(err => {
   if (err) {
